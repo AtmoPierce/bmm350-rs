@@ -27,4 +27,20 @@ impl Register {
     pub const INT_CTRL: u8 = 0x2E;
 
     pub const I2C_WDT_SET: u8 = 0x0A;
+
+    pub const OTP_CMD_REG: u8 = 0x50;
+
+    pub const OTP_CMD_PWR_OFF_OTP: u8 = 0x80;
+
+    pub const OTP_STATUS_REG: u8 = 0x55;
+
+    pub const OTP_DATA_MSB_REG: u8 = 0x52;
+
+    pub const OTP_DATA_LSB_REG: u8 = 0x53;
+
+    pub const PMU_CMD_STATUS_0: u8 = 0x07;
+
+    pub const PMU_CMD_STATUS_0_BR: u8 = 0x07;
+
+    pub const PMU_CMD_STATUS_0_FGR: u8 = 0x05;
 }

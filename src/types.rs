@@ -11,6 +11,8 @@ pub enum Error<E> {
     InvalidConfig,
     /// Timeout error
     Timeout,
+
+    ResetUnfinished,
 }
 
 /// Magnetometer power modes
@@ -24,6 +26,8 @@ pub enum PowerMode {
     Forced = 0x03,
     /// Forced mode fast
     ForcedFast = 0x04,
+    FluxGuideReset = 0x05,
+    BitReset = 0x07,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -130,6 +134,16 @@ pub struct MagCompensation {
     pub offset_z: i16,
 }
 
+impl Default for MagCompensation {
+    fn default() -> Self {
+        Self {
+            offset_x: 0,
+            offset_y: 0,
+            offset_z: 0,
+        }
+    }
+}
+
 /// 3D sensor data (raw values)
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Sensor3DData {
@@ -150,4 +164,15 @@ pub struct Sensor3DDataScaled {
     pub y: f32,
     /// Z-axis scaled value
     pub z: f32,
+}
+
+/// Scaled 3D sensor data
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PmuCmdStatus0 {
+    pub pmu_cmd_busy: u8,
+    pub odr_overwrite: u8,
+    pub avg_overwrite: u8,
+    pub power_mode_is_normal: u8,
+    pub cmd_is_illegal: u8,
+    pub pmu_cmd_value: u8,
 }

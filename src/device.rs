@@ -1,10 +1,11 @@
 use crate::{
     interface::{I2cInterface, ReadData, SpiInterface, WriteData},
     types::{
-        AxisEnableDisable, DataRate, Error, MagCompensation, PerformanceMode, PowerMode,
-        Sensor3DData, Sensor3DDataScaled,
+        AxisEnableDisable, DataRate, Error, MagCompensation, PerformanceMode, PmuCmdStatus0,
+        PowerMode, Sensor3DData, Sensor3DDataScaled,
     },
-    Bmm350, MagConfig, Register,
+    Bmm350, InterruptDrive, InterruptEnableDisable, InterruptLatch, InterruptMap,
+    InterruptPolarity, MagConfig, Register,
 };
 use embedded_hal::delay::DelayNs;
 
@@ -23,7 +24,9 @@ where
         Bmm350 {
             iface: I2cInterface { i2c, address },
             delay,
-            mag_range: 1000.0, // Default range in uT
+            mag_range: 1000.0,
+            var_id: 0,
+            mag_comp: MagCompensation::default(), // Default range in uT
         }
     }
 }
@@ -42,7 +45,9 @@ where
         Bmm350 {
             iface: SpiInterface { spi },
             delay,
-            mag_range: 1000.0, // Default range in uT
+            mag_range: 1000.0,
+            var_id: 0,
+            mag_comp: MagCompensation::default(), // Default range in uT
         }
     }
 }
@@ -66,9 +71,11 @@ where
         self.otp_dump_after_boot()?;
 
         // Power off OTP
-        self.write_register(Register::OTP_CMD_REG, 0x80)?;
+        self.write_register(Register::OTP_CMD_REG, Register::OTP_CMD_PWR_OFF_OTP)?;
 
-        self.magnetic_reset()
+        self.magnetic_reset()?;
+
+        Ok(())
     }
 
     fn otp_dump_after_boot(&mut self) -> Result<(), Error<E>> {
@@ -102,7 +109,7 @@ where
         let msb = self.read_register(Register::OTP_DATA_MSB_REG)?;
         let lsb = self.read_register(Register::OTP_DATA_LSB_REG)?;
 
-        Ok(((msb as u16) << 8) | (lsb as u16))
+        Ok(((msb as u16) << 8) | (lsb as u16) & 0xFFFF)
     }
 
     fn update_mag_compensation(&mut self, otp_data: &[u16; 32]) -> Result<(), Error<E>> {
@@ -128,6 +135,62 @@ where
         }
     }
 
+    /// Perform magnetic reset of the sensor.
+    /// This is necessary after a field shock (400mT field applied to sensor).
+    /// It performs both a bit reset and flux guide reset in suspend mode.
+    pub fn magnetic_reset(&mut self) -> Result<(), Error<E>> {
+        // Check if we're in normal mode
+        let mut restore_normal = false;
+        let mut pmu_status = self.read_pmu_cmd_status_0()?;
+
+        // If we're in normal mode, we need to go to suspend first
+        if pmu_status.power_mode_is_normal == 0x1 {
+            restore_normal = true;
+            self.set_power_mode(PowerMode::Suspend)?;
+        }
+
+        // Set Bit Reset (BR) command
+        self.write_register(Register::PMU_CMD, PowerMode::BitReset as u8)?;
+        self.delay.delay_us(14_000); // BR_DELAY
+
+        // Verify BR status
+        pmu_status = self.read_pmu_cmd_status_0()?;
+        if pmu_status.pmu_cmd_value != Register::PMU_CMD_STATUS_0_BR {
+            return Err(Error::ResetUnfinished);
+        }
+
+        // Set Flux Guide Reset (FGR) command
+        self.write_register(Register::PMU_CMD, PowerMode::FluxGuideReset as u8)?;
+        self.delay.delay_us(18_000); // FGR_DELAY
+
+        // Verify FGR status
+        let pmu_status = self.read_pmu_cmd_status_0()?;
+        if pmu_status.pmu_cmd_value != Register::PMU_CMD_STATUS_0_FGR {
+            return Err(Error::ResetUnfinished);
+        }
+
+        // Restore normal mode if we were in it before
+        if restore_normal {
+            self.set_power_mode(PowerMode::Normal)?;
+        }
+
+        Ok(())
+    }
+
+    /// Read the PMU command status register 0
+    fn read_pmu_cmd_status_0(&mut self) -> Result<PmuCmdStatus0, Error<E>> {
+        let status = self.read_register(Register::PMU_CMD_STATUS_0)?;
+
+        Ok(PmuCmdStatus0 {
+            pmu_cmd_busy: (status & 0x01),
+            odr_overwrite: (status & 0x2) >> 0x1,
+            avg_overwrite: (status & 0x4) >> 0x2,
+            power_mode_is_normal: (status & 0x8) >> 0x3,
+            cmd_is_illegal: (status & 0x10) >> 0x4,
+            pmu_cmd_value: (status & 0xE0) >> 5,
+        })
+    }
+
     /// Set the magnetometer configuration
     ///
     /// # Arguments
@@ -148,7 +211,7 @@ where
     /// # Arguments
     ///
     /// * `mode` - The power mode to set
-    pub fn set_power_mode(&mut self, mode: PowerMode) -> Result<(), Error<E>> {
+    pub fn set_power_mode(&mut self, mode: PowerMode) -> Result<(), Error<E>> { // TODO fix
         let reg_data = mode as u8;
         self.write_register(Register::PMU_CMD, reg_data)?;
 
@@ -165,7 +228,7 @@ where
     /// * `x` - Enable or disable X axis
     /// * `y` - Enable or disable Y axis
     /// * `z` - Enable or disable Z axis
-    pub fn enable_axes(
+    pub fn enable_axes( // TODO fix
         &mut self,
         x: AxisEnableDisable,
         y: AxisEnableDisable,
@@ -226,7 +289,7 @@ where
     }
 
     /// Set the output data rate and performance mode
-    pub fn set_odr_performance(
+    pub fn set_odr_performance( // TODO fix
         &mut self,
         odr: DataRate,
         performance: PerformanceMode,
@@ -238,26 +301,25 @@ where
     }
 
     /// Enable or disable the data ready interrupt
-    pub fn enable_interrupt(&mut self, enable: bool) -> Result<(), Error<E>> {
+    pub fn enable_interrupt(&mut self, enable: InterruptEnableDisable) -> Result<(), Error<E>> {
         let reg_data = self.read_register(Register::INT_CTRL)?;
-        let new_reg_data = if enable {
-            reg_data | 0x80
-        } else {
-            reg_data & 0x7F
-        };
+        let new_reg_data = (reg_data & (0x80)) | (((enable as u8) << 0x7) & 0x80);
         self.write_register(Register::INT_CTRL, new_reg_data)
     }
 
     /// Configure interrupt settings
     pub fn configure_interrupt(
         &mut self,
-        latch: bool,
-        polarity: bool,
-        open_drain: bool,
+        latch: InterruptLatch,
+        polarity: InterruptPolarity,
+        drive: InterruptDrive,
+        map: InterruptMap,
     ) -> Result<(), Error<E>> {
         let mut reg_data = self.read_register(Register::INT_CTRL)?;
-        reg_data =
-            (reg_data & 0xF0) | (latch as u8) | ((polarity as u8) << 1) | ((open_drain as u8) << 2);
+        reg_data = ((reg_data & (0x1)) | (latch as u8 & 0x1))
+            | (((polarity as u8) << 0x1) & 0x2)
+            | ((reg_data & (0x4)) | ((drive as u8) << 0x2) & 0x4)
+            | ((reg_data & (0x8)) | ((map as u8) << 0x3) & 0x8);
         self.write_register(Register::INT_CTRL, reg_data)
     }
 
