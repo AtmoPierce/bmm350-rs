@@ -2,15 +2,17 @@
 
 /// BMM350 driver for Rust
 ///
-/// This module provides a high-level interface for interacting with the Bosch BMM350 geomagnetic sensor.
-/// It supports both I2C and SPI interfaces and allows for configuration of the magnetometer settings.
+/// This module provides a high-level interface for interacting with the Bosch BMM350 magnetometer.
+/// It supports both I2C and SPI interfaces and allows for configuration of magnetometer settings.
 pub mod device;
 mod interface;
 mod registers;
 pub use registers::Register;
 mod types;
 pub use types::{
-    Error, MagnetometerPowerMode, MagnetometerRange, OutputDataRate, Sensor3DData,
+    AverageNum, AxisEnableDisable, Bandwidth, CtrlUser, DataRate, Error, I2cWdtEnable,
+    I2cWdtSelect, InterruptDrive, InterruptEnableDisable, InterruptLatch, InterruptMap,
+    InterruptPolarity, MagCompensation, PerformanceMode, PowerMode, SelfTestMode, Sensor3DData,
     Sensor3DDataScaled,
 };
 mod sensor_data;
@@ -23,18 +25,24 @@ pub struct Bmm350<DI, D> {
     /// Delay provider
     delay: D,
     /// Current magnetometer range
-    mag_range: MagnetometerRange,
+    mag_range: f32,
+    /// Variant ID
+    var_id: u8,
+    /// Magnetometer compensation data
+    mag_comp: MagCompensation,
 }
 
 /// Configuration for the magnetometer
 #[derive(Debug, Clone, Copy)]
 pub struct MagConfig {
     /// Output data rate
-    pub odr: OutputDataRate,
-    /// Measurement range
-    pub range: MagnetometerRange,
+    pub odr: DataRate,
+    /// Performance mode (averaging)
+    pub performance: PerformanceMode,
+    /// Bandwidth
+    pub bw: Bandwidth,
     /// Power mode
-    pub mode: MagnetometerPowerMode,
+    pub mode: PowerMode,
 }
 
 impl MagConfig {
@@ -46,9 +54,10 @@ impl MagConfig {
 
 #[derive(Debug, Clone, Copy)]
 pub struct MagConfigBuilder {
-    odr: Option<OutputDataRate>,
-    range: Option<MagnetometerRange>,
-    mode: Option<MagnetometerPowerMode>,
+    odr: Option<DataRate>,
+    performance: Option<PerformanceMode>,
+    bw: Option<Bandwidth>,
+    mode: Option<PowerMode>,
 }
 
 /// Builder for MagConfig
@@ -56,7 +65,8 @@ impl Default for MagConfigBuilder {
     fn default() -> Self {
         Self {
             odr: None,
-            range: None,
+            performance: None,
+            bw: None,
             mode: None,
         }
     }
@@ -64,19 +74,25 @@ impl Default for MagConfigBuilder {
 
 impl MagConfigBuilder {
     /// Set the output data rate
-    pub fn odr(mut self, odr: OutputDataRate) -> Self {
+    pub fn odr(mut self, odr: DataRate) -> Self {
         self.odr = Some(odr);
         self
     }
 
-    /// Set the measurement range
-    pub fn range(mut self, range: MagnetometerRange) -> Self {
-        self.range = Some(range);
+    /// Set the performance mode
+    pub fn performance(mut self, performance: PerformanceMode) -> Self {
+        self.performance = Some(performance);
+        self
+    }
+
+    /// Set the bandwidth
+    pub fn bw(mut self, bw: Bandwidth) -> Self {
+        self.bw = Some(bw);
         self
     }
 
     /// Set the power mode
-    pub fn mode(mut self, mode: MagnetometerPowerMode) -> Self {
+    pub fn mode(mut self, mode: PowerMode) -> Self {
         self.mode = Some(mode);
         self
     }
@@ -84,9 +100,10 @@ impl MagConfigBuilder {
     /// Build the MagConfig
     pub fn build(self) -> MagConfig {
         MagConfig {
-            odr: self.odr.unwrap_or(OutputDataRate::Odr20hz),
-            range: self.range.unwrap_or(MagnetometerRange::uT1300),
-            mode: self.mode.unwrap_or(MagnetometerPowerMode::Normal),
+            odr: self.odr.unwrap_or(DataRate::ODR100Hz),
+            performance: self.performance.unwrap_or(PerformanceMode::Regular),
+            bw: self.bw.unwrap_or(Bandwidth::Normal),
+            mode: self.mode.unwrap_or(PowerMode::Normal),
         }
     }
 }
@@ -95,7 +112,8 @@ impl From<MagConfig> for u16 {
     /// Convert MagConfig to a 16-bit register value
     fn from(config: MagConfig) -> Self {
         (config.odr as u16 & 0x0F)
-            | ((config.range as u16 & 0x07) << 4)
-            | ((config.mode as u16 & 0x03) << 7)
+            | ((config.performance as u16 & 0x03) << 4)
+            | ((config.bw as u16 & 0x01) << 7)
+            | ((config.mode as u16 & 0x07) << 12)
     }
 }
