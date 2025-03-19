@@ -59,6 +59,7 @@ where
 {
     /// Initialize the device
     pub fn init(&mut self) -> Result<(), Error<E>> {
+        self.delay.delay_us(3000);
         self.write_register_16bit(Register::CMD, Register::CMD_SOFT_RESET)?;
         self.delay.delay_us(2000);
 
@@ -211,7 +212,8 @@ where
     /// # Arguments
     ///
     /// * `mode` - The power mode to set
-    pub fn set_power_mode(&mut self, mode: PowerMode) -> Result<(), Error<E>> { // TODO fix
+    pub fn set_power_mode(&mut self, mode: PowerMode) -> Result<(), Error<E>> {
+        // TODO fix
         let reg_data = mode as u8;
         self.write_register(Register::PMU_CMD, reg_data)?;
 
@@ -228,7 +230,8 @@ where
     /// * `x` - Enable or disable X axis
     /// * `y` - Enable or disable Y axis
     /// * `z` - Enable or disable Z axis
-    pub fn enable_axes( // TODO fix
+    pub fn enable_axes(
+        // TODO fix
         &mut self,
         x: AxisEnableDisable,
         y: AxisEnableDisable,
@@ -289,7 +292,8 @@ where
     }
 
     /// Set the output data rate and performance mode
-    pub fn set_odr_performance( // TODO fix
+    pub fn set_odr_performance(
+        // TODO fix
         &mut self,
         odr: DataRate,
         performance: PerformanceMode,
