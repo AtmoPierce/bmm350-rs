@@ -61,7 +61,7 @@ where
     pub fn init(&mut self) -> Result<(), Error<E>> {
         self.delay.delay_us(3000);
         self.write_register_16bit(Register::CMD, Register::CMD_SOFT_RESET)?;
-        self.delay.delay_us(2000);
+        self.delay.delay_us(24000);
 
         let chip_id = self.read_register(Register::CHIPID)?;
         if chip_id != Register::BMM350_CHIP_ID {
