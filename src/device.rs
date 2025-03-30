@@ -65,7 +65,7 @@ where
 
         let err = self.read_register(Register::ERR_REG)?;
         if err != 0 {
-            return Err(Error::DeviceError(err));
+            return Err(Error::InvalidConfig);
         }
 
         let chip_id = self.read_register(Register::CHIPID)?;
