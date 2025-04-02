@@ -254,7 +254,8 @@ where
     /// Read the raw magnetometer data
     pub fn read_mag_data(&mut self) -> Result<Sensor3DData, Error<E>> {
         let mut data = [0u8; 9];
-        self.read_data(Register::MAG_X_LSB, &mut data)?;
+        data[0] = Register::MAG_X_LSB;
+        self.read_data(&mut data)?;
 
         Ok(Sensor3DData {
             x: i32::from_le_bytes([data[0], data[1], data[2], 0]),
@@ -359,13 +360,11 @@ where
     }
 
     fn read_register(&mut self, reg: u8) -> Result<u8, Error<E>> {
-        let mut data = [0u8; 1];
-        self.iface.read_data(reg, &mut data)?;
-        Ok(data[0])
+        self.iface.read_register(reg)
     }
 
-    fn read_data(&mut self, reg: u8, data: &mut [u8]) -> Result<(), Error<E>> {
-        self.iface.read_data(reg, data)
+    fn read_data<'a>(&mut self, data: &'a mut [u8]) -> Result<&'a [u8], Error<E>> {
+        self.iface.read_data(data)
     }
 
     fn wait_for_data_ready(&mut self) -> Result<(), Error<E>> {
