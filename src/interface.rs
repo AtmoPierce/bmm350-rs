@@ -1,20 +1,20 @@
 use crate::Error;
 use embedded_hal::{i2c, spi::SpiDevice};
 
-/// I2C communication interface for BMI323
+/// I2C communication interface for BMM350
 #[derive(Debug)]
 pub struct I2cInterface<I2C> {
     pub(crate) i2c: I2C,
     pub(crate) address: u8,
 }
 
-/// SPI communication interface for BMI323
+/// SPI communication interface for BMM350
 #[derive(Debug)]
 pub struct SpiInterface<SPI> {
     pub(crate) spi: SPI,
 }
 
-/// Trait for writing data to the BMI323
+/// Trait for writing data to the BMM350
 pub trait WriteData {
     type Error;
     /// Write a single byte to a register
