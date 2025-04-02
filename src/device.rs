@@ -68,11 +68,6 @@ where
             return Err(Error::InvalidConfig);
         }
 
-        let status = self.read_register(Register::OTP_STATUS_REG)?;
-        if status != 0 {
-            return Err(Error::InvalidConfig);
-        }
-
         let chip_id = self.read_register(Register::CHIPID)?;
         if chip_id != Register::BMM350_CHIP_ID {
             return Err(Error::InvalidDevice);
