@@ -59,9 +59,9 @@ where
 {
     /// Initialize the device
     pub fn init(&mut self) -> Result<(), Error<E>> {
-        self.delay.delay_us(3000);
+        self.delay.delay_us(3_000);
         self.write_register_16bit(Register::CMD, Register::CMD_SOFT_RESET)?;
-        self.delay.delay_us(100_000);
+        self.delay.delay_us(24_000);
 
         let err = self.read_register(Register::ERR_REG)?;
         if err != 0 {
@@ -157,7 +157,7 @@ where
 
         // Set Bit Reset (BR) command
         self.write_register(Register::PMU_CMD, PowerMode::BitReset as u8)?;
-        self.delay.delay_us(28_000); // BR_DELAY
+        self.delay.delay_us(14_000); // BR_DELAY
 
         // Verify BR status
         pmu_status = self.read_pmu_cmd_status_0()?;
@@ -167,7 +167,7 @@ where
 
         // Set Flux Guide Reset (FGR) command
         self.write_register(Register::PMU_CMD, PowerMode::FluxGuideReset as u8)?;
-        self.delay.delay_us(36_000); // FGR_DELAY
+        self.delay.delay_us(18_000); // FGR_DELAY
 
         // Verify FGR status
         let pmu_status = self.read_pmu_cmd_status_0()?;
