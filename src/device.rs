@@ -1,11 +1,8 @@
 use crate::{
-    interface::{I2cInterface, ReadData, SpiInterface, WriteData},
-    types::{
+    interface::{I2cInterface, ReadData, SpiInterface, WriteData}, types::{
         AxisEnableDisable, DataRate, Error, MagCompensation, PerformanceMode, PmuCmdStatus0,
         PowerMode, Sensor3DData, Sensor3DDataScaled,
-    },
-    Bmm350, InterruptDrive, InterruptEnableDisable, InterruptLatch, InterruptMap,
-    InterruptPolarity, MagConfig, Register,
+    }, AverageNum, Bmm350, InterruptDrive, InterruptEnableDisable, InterruptLatch, InterruptMap, InterruptPolarity, MagConfig, Register
 };
 use embedded_hal::delay::DelayNs;
 
@@ -299,10 +296,9 @@ where
 
     /// Set the output data rate and performance mode
     pub fn set_odr_performance(
-        // TODO fix
         &mut self,
         odr: DataRate,
-        performance: PerformanceMode,
+        performance: AverageNum,
     ) -> Result<(), Error<E>> {
         let reg_data = self.read_register(Register::PMU_CMD_AGGR_SET)?;
         let new_reg_data = (reg_data & 0xF0) | (odr as u8) | ((performance as u8) << 4);
