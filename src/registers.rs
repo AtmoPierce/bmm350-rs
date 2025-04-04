@@ -43,4 +43,10 @@ impl Register {
     pub const PMU_CMD_STATUS_0_BR: u8 = 0x07;
 
     pub const PMU_CMD_STATUS_0_FGR: u8 = 0x05;
+
+    pub const PMU_CMD_UPD_OAE: u8 = 0x02;
+
+    pub const AVG_MASK: u8 = 0x30;
+
+    pub const AVG_POS: u8 = 0x4;
 }

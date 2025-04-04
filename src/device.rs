@@ -242,7 +242,10 @@ where
         y: AxisEnableDisable,
         z: AxisEnableDisable,
     ) -> Result<(), Error<E>> {
-        let reg_data = (x as u8) | ((y as u8) << 1) | ((z as u8) << 2);
+        let mut reg_data: u8 = 0;
+        reg_data = ((x as u8) & 0x01)
+            | ((reg_data & 0x02) | ((y as u8) << 0x1) & 0x02)
+            | ((reg_data & 0x04) | ((z as u8) << 0x2) & 0x04);
         self.write_register(Register::PMU_CMD_AXIS_EN, reg_data)
     }
 
@@ -303,15 +306,21 @@ where
         odr: DataRate,
         performance: AverageNum,
     ) -> Result<(), Error<E>> {
-        let reg_data = self.read_register(Register::PMU_CMD_AGGR_SET)?;
-        let new_reg_data = (reg_data & 0xF0) | (odr as u8) | ((performance as u8) << 4);
+        let reg_data = (odr as u8) & 0xf;
+        let new_reg_data = (reg_data & Register::AVG_MASK)
+            | ((performance as u8) << Register::AVG_POS) & Register::AVG_MASK;
+
         self.write_register(Register::PMU_CMD_AGGR_SET, new_reg_data)?;
-        self.write_register(Register::PMU_CMD, PowerMode::Normal as u8)
+        self.write_register(Register::PMU_CMD, Register::PMU_CMD_UPD_OAE)?;
+
+        self.delay.delay_us(1_000);
+        Ok(())
     }
 
     /// Enable or disable the data ready interrupt
     pub fn enable_interrupt(&mut self, enable: InterruptEnableDisable) -> Result<(), Error<E>> {
-        let reg_data = self.read_register(Register::INT_CTRL)?;
+        self.read_register(Register::INT_CTRL)?;
+        let reg_data: u8 = 0;
         let new_reg_data = (reg_data & (0x80)) | (((enable as u8) << 0x7) & 0x80);
         self.write_register(Register::INT_CTRL, new_reg_data)
     }
@@ -324,9 +333,10 @@ where
         drive: InterruptDrive,
         map: InterruptMap,
     ) -> Result<(), Error<E>> {
-        let mut reg_data = self.read_register(Register::INT_CTRL)?;
+        self.read_register(Register::INT_CTRL)?;
+        let mut reg_data: u8 = 0;
         reg_data = ((reg_data & (0x1)) | (latch as u8 & 0x1))
-            | (((polarity as u8) << 0x1) & 0x2)
+            | ((reg_data & (0x2)) | ((polarity as u8) << 0x1) & 0x2)
             | ((reg_data & (0x4)) | ((drive as u8) << 0x2) & 0x4)
             | ((reg_data & (0x8)) | ((map as u8) << 0x3) & 0x8);
         self.write_register(Register::INT_CTRL, reg_data)
