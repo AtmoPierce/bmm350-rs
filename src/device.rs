@@ -156,6 +156,7 @@ where
         }
 
         // Set Bit Reset (BR) command
+        // TODO set BitReset as register instead of PowerMode enum
         self.write_register(Register::PMU_CMD, PowerMode::BitReset as u8)?;
         self.delay.delay_us(14_000); // BR_DELAY
 
@@ -166,6 +167,7 @@ where
         }
 
         // Set Flux Guide Reset (FGR) command
+        // TODO set FluxGuideReset as register instead of PowerMode enum
         self.write_register(Register::PMU_CMD, PowerMode::FluxGuideReset as u8)?;
         self.delay.delay_us(18_000); // FGR_DELAY
 
@@ -219,11 +221,56 @@ where
     /// * `mode` - The power mode to set
     pub fn set_power_mode(&mut self, mode: PowerMode) -> Result<(), Error<E>> {
         // TODO fix
-        let reg_data = mode as u8;
-        self.write_register(Register::PMU_CMD, reg_data)?;
 
-        // Wait for the power mode to be applied
-        self.delay.delay_ms(10);
+        let last_pwr = self.read_register(Register::REG_PMU_CMD)?;
+        if last_pwr > Register::PMU_CMD_NM_TC {
+            return Err(Error::InvalidConfig);
+        }
+
+        if last_pwr == Register::PMU_CMD_NM || last_pwr == Register::PMU_CMD_UPD_OAE {
+            self.write_register(Register::REG_PMU_CMD, Register::PMU_CMD_SUS)?;
+            self.delay.delay_us(6_000);
+        }
+
+        self.power_mode(mode)?;
+
+        Ok(())
+    }
+
+    fn power_mode(&mut self, mode: PowerMode) -> Result<(), Error<E>> {
+        let sus_to_forced_mode: [u32; 4] = [
+            Register::SUS_TO_FORCEDMODE_NO_AVG_DELAY,
+            Register::SUS_TO_FORCEDMODE_AVG_2_DELAY,
+            Register::SUS_TO_FORCEDMODE_AVG_4_DELAY,
+            Register::SUS_TO_FORCEDMODE_AVG_8_DELAY,
+        ];
+
+        /* Array to store suspend to forced mode fast delay */
+        let sus_to_forced_mode_fast: [u32; 4] = [
+            Register::SUS_TO_FORCEDMODE_FAST_NO_AVG_DELAY,
+            Register::SUS_TO_FORCEDMODE_FAST_AVG_2_DELAY,
+            Register::SUS_TO_FORCEDMODE_FAST_AVG_4_DELAY,
+            Register::SUS_TO_FORCEDMODE_FAST_AVG_8_DELAY,
+        ];
+
+        self.write_register(Register::REG_PMU_CMD, mode as u8)?;
+        let get_avg: u8 = self.read_register(Register::REG_PMU_CMD_AGGR_SET)?;
+        let avg = (get_avg & Register::AVG_MASK) >> Register::AVG_POS;
+        let mut delay_us = 0;
+        match mode {
+            PowerMode::Normal => {
+                delay_us = 38_000;
+            }
+            PowerMode::Forced => {
+                delay_us = sus_to_forced_mode[avg as usize];
+            }
+            PowerMode::ForcedFast => {
+                delay_us = sus_to_forced_mode_fast[avg as usize];
+            }
+            _ => {}
+        }
+
+        self.delay.delay_us(delay_us);
 
         Ok(())
     }

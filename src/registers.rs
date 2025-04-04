@@ -49,4 +49,26 @@ impl Register {
     pub const AVG_MASK: u8 = 0x30;
 
     pub const AVG_POS: u8 = 0x4;
+
+    pub const REG_PMU_CMD: u8 = 0x06;
+
+    pub const PMU_CMD_NM_TC: u8 = 0x09;
+
+    pub const PMU_CMD_NM: u8 = 0x01;
+
+    pub const PMU_CMD_SUS: u8 = 0x00;
+
+    pub const REG_PMU_CMD_AGGR_SET: u8 = 0x04;
+    
+    pub const SUSPEND_TO_NORMAL_DELAY: u32 = 38_000; 
+
+    pub const SUS_TO_FORCEDMODE_NO_AVG_DELAY: u32 = 15000;
+    pub const SUS_TO_FORCEDMODE_AVG_2_DELAY: u32 = 17000;
+    pub const SUS_TO_FORCEDMODE_AVG_4_DELAY: u32 = 20000;
+    pub const SUS_TO_FORCEDMODE_AVG_8_DELAY: u32 = 28000;
+
+    pub const SUS_TO_FORCEDMODE_FAST_NO_AVG_DELAY: u32 = 4000;
+    pub const SUS_TO_FORCEDMODE_FAST_AVG_2_DELAY: u32 = 5000;
+    pub const SUS_TO_FORCEDMODE_FAST_AVG_4_DELAY: u32 = 9000;
+    pub const SUS_TO_FORCEDMODE_FAST_AVG_8_DELAY: u32 = 16000;
 }
