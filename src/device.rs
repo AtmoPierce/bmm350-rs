@@ -122,11 +122,11 @@ where
         // Implement the logic to update magnetometer compensation data
         // This is a simplified version and may need to be expanded based on the specific BMM350 requirements
         self.mag_comp = MagCompensation {
-            offset_x: self.extract_signed_12bit(otp_data[14] & 0x0FFF),
+            offset_x: self.extract_signed_12bit(otp_data[0x0E] & 0x0FFF),
             offset_y: self
-                .extract_signed_12bit(((otp_data[14] & 0xF000) >> 4) | (otp_data[15] & 0x00FF)),
+                .extract_signed_12bit(((otp_data[0x0E] & 0xF000) >> 4) + (otp_data[0x0F] & 0x00FF)),
             offset_z: self
-                .extract_signed_12bit(((otp_data[15] & 0x0F00) << 4) | (otp_data[16] & 0x00FF)),
+                .extract_signed_12bit((otp_data[0x0F] & 0x0F00) + (otp_data[0x10] & 0x00FF)),
             // Add more fields as necessary
         };
 
@@ -298,7 +298,7 @@ where
 
     /// Read the raw magnetometer data
     pub fn read_mag_data(&mut self) -> Result<Sensor3DData, Error<E>> {
-        let mut data = [0u8; 9];
+        let mut data = [0u8; 12];
         data[0] = Register::MAG_X_LSB;
         self.read_data(&mut data)?;
 
