@@ -298,14 +298,42 @@ where
 
     /// Read the raw magnetometer data
     pub fn read_mag_data(&mut self) -> Result<Sensor3DData, Error<E>> {
-        let mut data = [0u8; 12];
-        data[0] = Register::MAG_X_LSB;
-        self.read_data(&mut data)?;
+        // Prepare a buffer: 1 byte for start address + 9 bytes for data (X, Y, Z)
+        const DATA_LEN: usize = 9;
+        const BUFFER_LEN: usize = 1 + DATA_LEN;
+        let mut buffer = [0u8; BUFFER_LEN]; // Size 10
+        buffer[0] = Register::MAG_X_LSB; // Start address 0x31
 
+        // read_data will return a slice referencing buffer[1..10] containing the 9 data bytes
+        let sensor_data_slice = self.read_data(&mut buffer[0..BUFFER_LEN])?;
+
+        // Helper function for 24-bit signed reconstruction (still needed!)
+        fn reconstruct_signed_24bit(xlsb: u8, lsb: u8, msb: u8) -> i32 {
+            let unsigned_val = (xlsb as u32) | ((lsb as u32) << 8) | ((msb as u32) << 16);
+            if (msb & 0x80) != 0 {
+                (unsigned_val | 0xFF000000) as i32 // Manual sign extension
+            } else {
+                unsigned_val as i32
+            }
+        }
+
+        // Use indices relative to the returned slice
         Ok(Sensor3DData {
-            x: i32::from_le_bytes([data[0], data[1], data[2], 0]),
-            y: i32::from_le_bytes([data[3], data[4], data[5], 0]),
-            z: i32::from_le_bytes([data[6], data[7], data[8], 0]),
+            x: reconstruct_signed_24bit(
+                sensor_data_slice[0],
+                sensor_data_slice[1],
+                sensor_data_slice[2],
+            ),
+            y: reconstruct_signed_24bit(
+                sensor_data_slice[3],
+                sensor_data_slice[4],
+                sensor_data_slice[5],
+            ),
+            z: reconstruct_signed_24bit(
+                sensor_data_slice[6],
+                sensor_data_slice[7],
+                sensor_data_slice[8],
+            ),
         })
     }
 
