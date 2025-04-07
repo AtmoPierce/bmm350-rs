@@ -1,0 +1,24 @@
+[package]
+name = "bmm350"
+version = "0.0.1"
+edition = "2021"
+readme = "README.md"
+authors = ["Wyatt Mattas <mattaswm@gmail.com>"]
+repository = "https://github.com/wyatt-mattas/bmm350-rs/"
+keywords = ["inertial", "magnetometer", "embedded-hal-driver"]
+categories = ["embedded", "hardware-support", "no-std"]
+license = "Apache-2.0"
+documentation = "https://docs.rs/bmm350"
+description = "Platform agnostic Rust driver for the BMM350 Magnetometer."
+homepage = "https://github.com/wyatt-mattas/bmm350-rs/"
+
+include = [
+    "/**/*.rs",
+    "/Cargo.toml",
+    "/README.md",
+    "/CHANGELOG.md",
+    "/LICENSE-APACHE",
+]
+
+[dependencies]
+embedded-hal = "1.0.0"
