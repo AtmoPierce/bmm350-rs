@@ -15,7 +15,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-bmm350 = "0.0.1"  # Replace with the actual version
+bmm350 = "0.0.2"  # Replace with the actual version
 ```
 
 Here's a basic example of how to use the driver:
