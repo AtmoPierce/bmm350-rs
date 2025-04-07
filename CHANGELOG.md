@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.2] - 2025-04-06
 ### Added
-- Initial release of the BMI323 Rust driver.
+- Initial release of the BMM350 Rust driver.
 - Support for both I2C and SPI interfaces (SPI not validated).
 - Configurable magnetometer settings.
 - Functions to read raw sensor data.
