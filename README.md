@@ -1,4 +1,4 @@
-# BMI323 Rust Driver
+# BMM350 Rust Driver
 
 This is a Rust driver for the Bosch BMM350 Magnetometer. The BMM350 is a highly integrated, low power Magnetometer that provides precise angular rate measurements.
 
