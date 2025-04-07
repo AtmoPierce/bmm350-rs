@@ -1,5 +1,5 @@
 use crate::{
-    interface::{I2cInterface, ReadData, SpiInterface, WriteData},
+    interface::{I2cInterface, ReadData, WriteData},
     types::{
         AxisEnableDisable, DataRate, Error, MagCompensation, PerformanceMode, PmuCmdStatus0,
         PowerMode, Sensor3DData, Sensor3DDataScaled,
@@ -23,27 +23,6 @@ where
     pub fn new_with_i2c(i2c: I2C, address: u8, delay: D) -> Self {
         Bmm350 {
             iface: I2cInterface { i2c, address },
-            delay,
-            mag_range: 1000.0,
-            var_id: 0,
-            mag_comp: MagCompensation::default(), // Default range in uT
-        }
-    }
-}
-
-impl<SPI, D> Bmm350<SpiInterface<SPI>, D>
-where
-    D: DelayNs,
-{
-    /// Create a new BMM350 device instance
-    ///
-    /// # Arguments
-    ///
-    /// * `spi` - The SPI interface
-    /// * `delay` - A delay provider
-    pub fn new_with_spi(spi: SPI, delay: D) -> Self {
-        Bmm350 {
-            iface: SpiInterface { spi },
             delay,
             mag_range: 1000.0,
             var_id: 0,
@@ -337,21 +316,9 @@ where
         })
     }
 
-    /// Read the scaled magnetometer data
-    pub fn read_mag_data_scaled(&mut self) -> Result<Sensor3DDataScaled, Error<E>> {
-        let raw_data = self.read_mag_data()?;
-        let scale_factor = self.mag_range / ((1 << 23) as f32);
-
-        Ok(Sensor3DDataScaled {
-            x: raw_data.x as f32 * scale_factor,
-            y: raw_data.y as f32 * scale_factor,
-            z: raw_data.z as f32 * scale_factor,
-        })
-    }
-
     /// Perform a self-test
     // TODO fix this
-    pub fn perform_self_test(&mut self) -> Result<bool, Error<E>> {
+    fn perform_self_test(&mut self) -> Result<bool, Error<E>> {
         // Save current configuration
         let current_power_mode = self.read_register(Register::PMU_CMD)?;
         let current_odr = self.read_register(Register::PMU_CMD_AGGR_SET)?;

@@ -1,17 +1,11 @@
 use crate::Error;
-use embedded_hal::{i2c, spi::SpiDevice};
+use embedded_hal::i2c;
 
 /// I2C communication interface for BMM350
 #[derive(Debug)]
 pub struct I2cInterface<I2C> {
     pub(crate) i2c: I2C,
     pub(crate) address: u8,
-}
-
-/// SPI communication interface for BMM350
-#[derive(Debug)]
-pub struct SpiInterface<SPI> {
-    pub(crate) spi: SPI,
 }
 
 /// Trait for writing data to the BMM350
@@ -44,21 +38,6 @@ where
 
     fn write_data(&mut self, payload: &[u8]) -> Result<(), Self::Error> {
         self.i2c.write(self.address, payload).map_err(Error::Comm)
-    }
-}
-
-impl<SPI, E> WriteData for SpiInterface<SPI>
-where
-    SPI: SpiDevice<Error = E>,
-{
-    type Error = Error<E>;
-    fn write_register(&mut self, register: u8, data: u8) -> Result<(), Self::Error> {
-        let payload: [u8; 2] = [register, data];
-        self.spi.write(&payload).map_err(Error::Comm)
-    }
-
-    fn write_data(&mut self, payload: &[u8]) -> Result<(), Self::Error> {
-        self.spi.write(payload).map_err(Error::Comm)
     }
 }
 
@@ -111,31 +90,5 @@ where
         data.copy_from_slice(&temp_buf[2..total_len]);
 
         Ok(data)
-    }
-}
-
-impl<SPI, E> ReadData for SpiInterface<SPI>
-where
-    SPI: SpiDevice<Error = E>,
-{
-    type Error = Error<E>;
-    fn read_register(&mut self, register: u8) -> Result<u8, Self::Error> {
-        let mut data = [register | 0x80, 0, 0]; // Add read bit and 1 dummy byte
-        self.spi.transfer_in_place(&mut data).map_err(Error::Comm)?;
-        Ok(data[2]) // Return the actual data byte, skipping dummy byte
-    }
-
-    fn read_data<'a>(&mut self, payload: &'a mut [u8]) -> Result<&'a [u8], Self::Error> {
-        let len = payload.len();
-        let mut temp_buf = [0u8; 128]; // Temporary buffer to hold read bit, dummy byte, and data
-        temp_buf[0] = payload[0] | 0x80; // Add read bit to register address
-
-        self.spi
-            .transfer_in_place(&mut temp_buf[..len + 1])
-            .map_err(Error::Comm)?; // +1 for dummy byte
-
-        // Copy data from temp_buf to payload, skipping dummy byte
-        payload[1..].copy_from_slice(&temp_buf[2..len + 1]);
-        Ok(&payload[1..])
     }
 }

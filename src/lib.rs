@@ -3,7 +3,7 @@
 /// BMM350 driver for Rust
 ///
 /// This module provides a high-level interface for interacting with the Bosch BMM350 magnetometer.
-/// It supports both I2C and SPI interfaces and allows for configuration of magnetometer settings.
+/// It supports both I2C interfaces and allows for configuration of magnetometer settings.
 pub mod device;
 mod interface;
 mod registers;
